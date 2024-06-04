@@ -166,7 +166,7 @@ def parse_args():
     parser.add_argument(
         "--K_round",
         type=int,
-        default=20,
+        default=10,
         help="Optimization Round",
     )
     parser.add_argument(
@@ -205,7 +205,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="output_test",
+        default="output_test_k_round=10",
         help="Save editing results",
     )
     args = parser.parse_args()

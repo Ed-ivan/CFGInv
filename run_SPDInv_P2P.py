@@ -148,28 +148,28 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default="images/000000000007.jpg",
+        default="images/000000000005.jpg",
         # required=True,
         help="Image path",
     )
     parser.add_argument( 
         "--source",
         type=str,
-        default="a dog ",
+        default="a cat standing on the groud",
         # required=True,
         help="Source prompt",
     )
     parser.add_argument(
         "--target",
         type=str,
-        default="a silver dog  sculpture",
+        default="a silver cat  sculpture standing on the groud",
         # required=True,
         help="Target prompt",
     )
     parser.add_argument(
         "--blended_word",
         type=str,
-        default="dog dog",
+        default="cat cat",
         help="Blended word needed for P2P",
     )
     parser.add_argument(

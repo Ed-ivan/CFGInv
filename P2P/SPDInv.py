@@ -137,8 +137,8 @@ class SourcePromptDisentanglementInversion:
 
             optimal_latent = latent.clone().detach()
             optimal_latent.requires_grad = True
-            #optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.5, nesterov=True)
-            optimizer = torch.optim.AdamW([optimal_latent], lr=self.lr)
+            optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.5, nesterov=True)
+            #optimizer = torch.optim.AdamW([optimal_latent], lr=self.lr)
             #TODO: 加一个 双向的loss  这个想法不太行啊，想一下 gan 那边的文献 
             for rid in range(self.opt_round):
                 with torch.enable_grad():
