@@ -9,7 +9,8 @@ from PIL import Image
 import os
 from P2P.scheduler_dev import DDIMSchedulerDev
 import argparse
-
+from utils.control_utils import AttentionStore
+from utils.control_utils import aggregate_attention
 import torch.nn.functional as F
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -141,6 +142,10 @@ def P2P_inversion_and_edit(
 
     filename = image_path.split('/')[-1].replace(".jpg",".png")
     Image.fromarray(np.concatenate(images, axis=1)).save(f"{output_dir}/{sample_count}_P2P_{filename}")
+
+
+
+
 
 
 def parse_args():

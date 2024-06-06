@@ -1,4 +1,3 @@
-# 实现 spn的 inversion 
 from typing import Optional, Union, List
 from tqdm import tqdm
 import torch
@@ -10,7 +9,8 @@ from PIL import Image
 import os
 from P2P.scheduler_dev import DDIMSchedulerDev
 import argparse
-
+from utils.control_utils import AttentionStore
+from utils.control_utils import aggregate_attention
 import torch.nn.functional as F
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -18,12 +18,17 @@ from utils.control_utils import load_512, make_controller
 from P2P.SPDInv import SourcePromptDisentanglementInversion
 
 
-# this file is to run rescontruction results 
+# %%c
+
+
+
+
 
 @torch.no_grad()
-def recontruction(
+def editing_p2p(
         model,
         prompt: List[str],
+        controller,
         num_inference_steps: int = 50,
         guidance_scale: Optional[float] = 7.5,
         generator: Optional[torch.Generator] = None,
@@ -35,7 +40,7 @@ def recontruction(
         **kwargs,
 ):
     batch_size = len(prompt)
-    # ptp_utils.register_attention_control(model, controller)
+    ptp_utils.register_attention_control(model, controller)
     # 应该是在 进行了注册 
     height = width = 512
 
@@ -47,7 +52,7 @@ def recontruction(
         return_tensors="pt",
     )
     text_embeddings = model.text_encoder(text_input.input_ids.to(model.device))[0]
-    # [2,77,768] 
+    # [2,77.768] 
     max_length = text_input.input_ids.shape[-1]
     if uncond_embeddings is None:
         uncond_input = model.tokenizer(
@@ -60,14 +65,13 @@ def recontruction(
     latent, latents = ptp_utils.init_latent(latent, model, height, width, generator, batch_size)
     start_time = num_inference_steps
     model.scheduler.set_timesteps(num_inference_steps)
-    controller=None
     with torch.no_grad():
         for i, t in enumerate(tqdm(model.scheduler.timesteps[-start_time:], total=num_inference_steps)):
             if uncond_embeddings_ is None:
                 context = torch.cat([uncond_embeddings[i].expand(*text_embeddings.shape), text_embeddings])
             else:
                 context = torch.cat([uncond_embeddings_, text_embeddings])
-            latents = ptp_utils.diffusion_step(model,controller,latents, context, t, guidance_scale,
+            latents = ptp_utils.diffusion_step(model, controller, latents, context, t, guidance_scale,
                                                low_resource=False,
                                                inference_stage=inference_stage, x_stars=x_stars, i=i, **kwargs)
     if return_type == 'image':
@@ -77,9 +81,8 @@ def recontruction(
     return image, latent
 
 
-
 @torch.no_grad()
-def P2P_inversion_and_recontruction(
+def Inversion_and_show_attention_map(
         image_path,
         prompt_src,
         prompt_tar,
@@ -122,17 +125,44 @@ def P2P_inversion_and_recontruction(
 
     ########## edit ##########
     prompts = [prompt_src, prompt_tar]
+    cross_replace_steps = {'default_': cross_replace_steps, }
+    if isinstance(blend_word, str):
+        s1, s2 = blend_word.split(",")
+        blend_word = (((s1,), (
+            s2,)))  # for local edit. If it is not local yet - use only the source object: blend_word = ((('cat',), ("cat",))).
+    if isinstance(eq_params, str):
+        s1, s2 = eq_params.split(",")
+        eq_params = {"words": (s1,), "values": (float(s2),)}  # amplify attention to the word "tiger" by *2
+    controller = make_controller(ldm_stable, prompts, is_replace_controller, cross_replace_steps, self_replace_steps,
+                                 blend_word, eq_params, num_ddim_steps=num_of_ddim_steps)
+    
+    #TODO：我想写的是计算 得到的 z_latent 跟 src 之间的 attent_map ，里面的代码应该怎么修改?  应该不要求平均了啊 
+    #应该怎么衡量跟 noise 之间的距离？  所以我在里面应该算的是 p(x) ，如果概率大，说明 更加的趋于noise ,自然编辑性就好 ？ 
+    # 那么问题来了  使用的 scale 强度是不是 跟edit的一致？ 总之不能太大 。 
 
-    images, _ = recontruction(ldm_stable, prompts,latent=z_inverted_noise_code,
-                            num_inference_steps=num_of_ddim_steps,
-                            #TODO: 记得修改一下 
-                            #guidance_scale=1,
-                            guidance_scale=guidance_scale,
-                            uncond_embeddings=uncond_embeddings,
-                            inversion_guidance=use_inversion_guidance, x_stars=x_stars, )
+    # https://github.com/openai/improved-diffusion
 
-    filename = image_path.split('/')[-1].replace(".jpg",".png")
-    Image.fromarray(np.concatenate(images, axis=1)).save(f"{output_dir}/{sample_count}_P2P_{filename}")
+
+
+@torch.no_grad()
+def log_likelihood(x:torch):
+    assert(len(x.shape)>=3,"x size is  not right")
+    mu = torch.zeros(x.shape) 
+    centered_x = x - mu
+    quadratic_term = (centered_x ** 2).sum(dim=(-1,-2,-3))  
+
+    exp_term = torch.exp(-0.5 * quadratic_term)
+    return exp_term
+
+
+
+
+
+
+
+
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Input your image and editing prompt.")
@@ -143,18 +173,17 @@ def parse_args():
         # required=True,
         help="Image path",
     )
-    parser.add_argument(
+    parser.add_argument( 
         "--source",
         type=str,
-        default="a cat standing on the ground",
+        default="a cat standing on the groud",
         # required=True,
         help="Source prompt",
     )
     parser.add_argument(
         "--target",
         type=str,
-        default= "a cat  and  a dog standing on the ground",
-        #"a Golden Retriever",
+        default="a silver cat  sculpture standing on the groud",
         # required=True,
         help="Target prompt",
     )
@@ -173,13 +202,13 @@ def parse_args():
     parser.add_argument(
         "--num_of_ddim_steps",
         type=int,
-        default=500,
+        default=50,
         help="Blended word needed for P2P",
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=0.01,
+        default=0.001,
     )
     parser.add_argument(
         "--delta_threshold",
@@ -201,18 +230,16 @@ def parse_args():
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=1,
+        default=7.5,
     )
     parser.add_argument(
         "--output",
         type=str,
-        default="output_res",
+        default="outputs",
         help="Save editing results",
     )
     args = parser.parse_args()
     return args
-
-# 里面的具体编辑还得看下人家 direactinversion 的  
 
 
 if __name__ == "__main__":
@@ -231,9 +258,5 @@ if __name__ == "__main__":
     params['prompt_tar'] = args.target
     params['output_dir'] = args.output
     params['image_path'] = args.input
-    P2P_inversion_and_recontruction(**params)
-
-
-
-
+    Inversion_and_show_attention_map(**params)
 

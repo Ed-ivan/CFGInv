@@ -146,6 +146,7 @@ class AttentionStore(AttentionControl):
         average_attention = {key: [item / self.cur_step for item in self.attention_store[key]] for key in
                              self.attention_store}
         return average_attention
+    
 
     def reset(self):
         super(AttentionStore, self).reset()
@@ -300,6 +301,20 @@ def read_image(image_path):
         print("Error",e)
         return None
     
+
+
+def aggregate_attention(attention_store: AttentionStore, res: int, from_where: List[str], is_cross: bool, select: int,prompts):
+    out = []
+    attention_maps = attention_store.get_average_attention()
+    num_pixels = res ** 2
+    for location in from_where:
+        for item in attention_maps[f"{location}_{'cross' if is_cross else 'self'}"]:
+            if item.shape[1] == num_pixels:
+                cross_maps = item.reshape(len(prompts), -1, res, res, item.shape[-1])[select]
+                out.append(cross_maps)
+    out = torch.cat(out, dim=0)
+    out = out.sum(0) / out.shape[0]
+    return out.cpu()
 
 
 

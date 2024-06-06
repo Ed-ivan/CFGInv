@@ -70,7 +70,7 @@ class SourcePromptDisentanglementInversion:
 
     def get_noise_pred_single(self, latents, t, context):
         noise_pred = self.model.unet(latents, t, encoder_hidden_states=context)["sample"]
-
+        #TODO: 
     #    if low_resource:
     #       noise_pred_uncond = model.unet(latents, t, encoder_hidden_states=context[0])["sample"]
     #       noise_prediction_text = model.unet(latents, t, encoder_hidden_states=context[1])["sample"]
@@ -130,6 +130,7 @@ class SourcePromptDisentanglementInversion:
         for i in range(self.num_ddim_steps):
             t = self.model.scheduler.timesteps[len(self.model.scheduler.timesteps) - i - 1]
             noise_pred = self.get_noise_pred_single(latent, t, cond_embeddings)
+            # TODO: 那么就是需要修改这个地方了 还得得到这个uncond的  
             latent_ztm1 = latent.clone().detach()
             latent = self.next_step(noise_pred, t, latent_ztm1)
 
