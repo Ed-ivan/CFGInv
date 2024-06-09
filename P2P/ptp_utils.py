@@ -87,6 +87,7 @@ def diffusion_step(model, controller, latents, context, t, guidance_scale, low_r
         latents_input = torch.cat([latents] * 2)
         noise_pred = model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
         noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
+        breakpoint()
     step_kwargs = {
         'ref_image': None,
         'recon_lr': 0,

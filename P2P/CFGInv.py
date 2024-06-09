@@ -43,7 +43,7 @@ def load_512(image_path, left=0, right=0, top=0, bottom=0):
     return image
 
 
-class SourcePromptDisentanglementInversion:
+class CFGInversion:
     def prev_step(self, model_output: Union[torch.FloatTensor, np.ndarray], timestep: int,
                   sample: Union[torch.FloatTensor, np.ndarray]):
         prev_timestep = timestep - self.scheduler.config.num_train_timesteps // self.scheduler.num_inference_steps
@@ -68,11 +68,25 @@ class SourcePromptDisentanglementInversion:
         next_sample = alpha_prod_t_next ** 0.5 * next_original_sample + next_sample_direction
         return next_sample
     
-    def get_noise_pred_single(self, latents, t, context):
-        noise_pred = self.model.unet(latents, t, encoder_hidden_states=context)["sample"]
-        # [1,4,64,64]
-        return noise_pred
-        
+
+    def get_noise_pred_single(self,latents,t,context):
+        #但是这么修改的话， 直接就会出现了错误  。 应该怎么修改？ 
+        latents_input = torch.cat([latents] * 2)
+        noise_pred = self.model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
+        noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
+        noise_cfg = noise_pred_uncond + self.scale *(noise_prediction_text-noise_pred_uncond)
+        return noise_cfg
+    
+        #TODO: >
+    #    if low_resource:
+    #       noise_pred_uncond = model.unet(latents, t, encoder_hidden_states=context[0])["sample"]
+    #       noise_prediction_text = model.unet(latents, t, encoder_hidden_states=context[1])["sample"]
+    #    else:
+    #       latents_input = torch.cat([latents] * 2)
+    #       noise_pred = model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
+    #       noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
+        #return noise_pred
+
 
     @torch.no_grad()     
     def latent2image(self, latents, return_type='np'):
@@ -123,24 +137,22 @@ class SourcePromptDisentanglementInversion:
         latent = latent.clone().detach()
         for i in range(self.num_ddim_steps):
             t = self.model.scheduler.timesteps[len(self.model.scheduler.timesteps) - i - 1]
-            # 应该就是这里修改的地方 
-            noise_pred = self.get_noise_pred_single(latent, t, cond_embeddings)
+            noise_pred = self.get_noise_pred_single(latent, t, self.context)
             # TODO: 那么就是需要修改这个地方了 还得得到这个uncond的  
             latent_ztm1 = latent.clone().detach()
             latent = self.next_step(noise_pred, t, latent_ztm1)
 
-            ################ SPDInv optimization steps #################
+            ################ below code is from  SPDInv optimization steps #################
 
             optimal_latent = latent.clone().detach()
             optimal_latent.requires_grad = True
             optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.5, nesterov=True)
             #optimizer = torch.optim.AdamW([optimal_latent], lr=self.lr)
-            #TODO: 加一个 双向的loss  这个想法不太行啊，想一下 gan 那边的文献 
             for rid in range(self.opt_round):
                 with torch.enable_grad():
                     
                     optimizer.zero_grad()
-                    noise_pred = self.get_noise_pred_single(optimal_latent, t, cond_embeddings)
+                    noise_pred = self.get_noise_pred_single(optimal_latent, t, self.context)
                     # [1,4,64,64]
                     pred_latent = self.next_step(noise_pred, t, latent_ztm1)
                     
@@ -186,7 +198,7 @@ class SourcePromptDisentanglementInversion:
         return (image_gt, image_rec, image_rec_latent), ddim_latents, uncond_embeddings
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True):
+                 enable_threshold=True,scale =5.0):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model
@@ -199,3 +211,4 @@ class SourcePromptDisentanglementInversion:
         self.lr = learning_rate
         self.threshold = delta_threshold
         self.enable_threshold = enable_threshold
+        self.scale = scale

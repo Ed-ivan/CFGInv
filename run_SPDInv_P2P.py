@@ -15,8 +15,8 @@ import torch.nn.functional as F
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 from utils.control_utils import load_512, make_controller
-from P2P.SPDInv import SourcePromptDisentanglementInversion
-
+#from P2P.SPDInv import SourcePromptDisentanglementInversion
+from P2P.CFGInv import CFGInversion
 
 # %%c
 
@@ -107,7 +107,7 @@ def P2P_inversion_and_edit(
     ldm_stable = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", scheduler=scheduler).to(
         device)
     
-    SPD_inversion = SourcePromptDisentanglementInversion(ldm_stable, K_round=K_round, num_ddim_steps=num_of_ddim_steps,
+    SPD_inversion = CFGInversion(ldm_stable, K_round=K_round, num_ddim_steps=num_of_ddim_steps,
                                                          learning_rate=learning_rate, delta_threshold=delta_threshold,
                                                          enable_threshold=enable_threshold)
     (image_gt, image_enc, image_enc_latent), x_stars, uncond_embeddings = SPD_inversion.invert(

@@ -18,10 +18,6 @@ from utils.control_utils import load_512, make_controller
 from P2P.SPDInv import SourcePromptDisentanglementInversion
 
 
-# %%c
-
-
-
 
 
 @torch.no_grad()
@@ -45,7 +41,7 @@ def editing_p2p(
     height = width = 512
 
     text_input = model.tokenizer(
-        prompt,
+        prompt, 
         padding="max_length",
         max_length=model.tokenizer.model_max_length,
         truncation=True,
