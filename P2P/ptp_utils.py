@@ -87,14 +87,15 @@ def diffusion_step(model, controller, latents, context, t, guidance_scale, low_r
         latents_input = torch.cat([latents] * 2)
         noise_pred = model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
         noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
-        breakpoint()
     step_kwargs = {
         'ref_image': None,
         'recon_lr': 0,
         'recon_mask': None,
     }
     mask_edit = None
-    # 应该是 p2p improved 的那篇 
+    #TODO:是不是这里面    embeddings_un + scale(embeddings_text - embeddings_un) 是不是有点放大了 这个 embeddings ？？ 
+    #  然后里面应该按照 proximal 的方式？？ 
+    #  
     if inference_stage and prox is not None:
         if prox == 'l1':
             score_delta = noise_prediction_text - noise_pred_uncond
@@ -131,6 +132,7 @@ def diffusion_step(model, controller, latents, context, t, guidance_scale, low_r
         noise_pred = noise_pred_uncond + guidance_scale * score_delta
     else:
         noise_pred = noise_pred_uncond + guidance_scale * (noise_prediction_text - noise_pred_uncond)
+
     latents = model.scheduler.step(noise_pred, t, latents, **step_kwargs)["prev_sample"]
     if mask_edit is not None and inversion_guidance and (recon_t > 0 and t < recon_t) or (recon_t < 0 and t > -recon_t):
         recon_mask = 1 - mask_edit

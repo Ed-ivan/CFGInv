@@ -198,7 +198,7 @@ class CFGInversion:
         return (image_gt, image_rec, image_rec_latent), ddim_latents, uncond_embeddings
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =5.0):
+                 enable_threshold=True,scale =1.0):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model
