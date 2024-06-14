@@ -67,6 +67,7 @@ def recontruction(
                 context = torch.cat([uncond_embeddings[i].expand(*text_embeddings.shape), text_embeddings])
             else:
                 context = torch.cat([uncond_embeddings_, text_embeddings])
+            # 倒是不如直接 传入一些latents 
             latents = ptp_utils.diffusion_step(model,controller,latents, context, t, guidance_scale,
                                                low_resource=False,
                                                inference_stage=inference_stage, x_stars=x_stars,prox=None, i=i, **kwargs)
@@ -115,6 +116,8 @@ def P2P_inversion_and_recontruction(
         image_path, prompt_src, offsets=offsets, npi_interp=npi_interp, verbose=True)
 
     z_inverted_noise_code = x_stars[-1]
+
+    # 如果是修改的话应该从下面入手， 
     
     del SPD_inversion
 
@@ -125,7 +128,7 @@ def P2P_inversion_and_recontruction(
 
     images, _ = recontruction(ldm_stable, prompts,latent=z_inverted_noise_code,
                             num_inference_steps=num_of_ddim_steps,
-                            #TODO: 记得修改一下 
+                            #TODO:记得修改一下 
                             #guidance_scale=1,
                             guidance_scale=guidance_scale,
                             uncond_embeddings=uncond_embeddings,
