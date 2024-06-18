@@ -42,7 +42,6 @@ def load_512(image_path, left=0, right=0, top=0, bottom=0):
     image = np.array(Image.fromarray(image).resize((512, 512)))
     return image
 
-
 class CFGInversion:
     def prev_step(self, model_output: Union[torch.FloatTensor, np.ndarray], timestep: int,
                   sample: Union[torch.FloatTensor, np.ndarray]):
@@ -198,7 +197,7 @@ class CFGInversion:
         return (image_gt, image_rec, image_rec_latent), ddim_latents, uncond_embeddings
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0):
+                 enable_threshold=True,scale =3.0):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model

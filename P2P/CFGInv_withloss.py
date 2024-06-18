@@ -205,12 +205,31 @@ class CFGInversion:
             cond_embeddings = ptp_utils.slerp_tensor(npi_interp, cond_embeddings, uncond_embeddings)
         uncond_embeddings = [cond_embeddings] * self.num_ddim_steps
         return (image_gt, image_rec, image_rec_latent), ddim_latents, uncond_embeddings
+    
 
-    #TODO:  ProxEdit_Improving_Tuning-Free_Real_Image_Editing_With_Proximal_Guidance 
-    def proximal_constants(self,prox,noise_prediction_text,noise_pred_uncond,quantile):
+    # help function : compute posterior_mean_variable
+    def posterior_mean_variable(self,timestep: int, latent_init: Union[torch.FloatTensor, np.ndarray]):
+        
+        alpha_prod_t = self.scheduler.alphas_cumprod[timestep]
+        # tensor,scalor
+        return  alpha_prod_t**0.5*latent_init ,  1-alpha_prod_t
+
+
+    def log_prob_regulation(self,latent: Union[torch.FloatTensor, np.ndarray],posterior_mean, posterior_variable):
+        
+        '''
+        得到里面的 p(x_{t}|x_{0})分布,计算得到的x_{t}的概率，但是由于本身 x_t 的维度非常大,所以还不能直接这么写 
+        logq(x_{t}|x_{0}) = sum(log(x_{tj}|x_{oj})) (按照每个都是独立分布进行处理的)
+        '''
+        log_pz = 0.5 * torch.sum(torch.log(2 * torch.pi * posterior_variable*2)) + torch.sum((latent - posterior_mean)**2 / (2 * posterior_variable**2))
+        return log_pz
+
+    #TODO:  ProxEdit_Improving_Tuning-Free_Real_Image_Editing_With_Proximal_Guidance  this fn is not used !
+    def proximal_constants(self,prox,noise_prediction_text,noise_pred_uncond,quantile): 
+
         '''
         主要是为了  限制 使用 CFG_inversion 时候 embeddings_un + scale(embddings_text -embeddings_un) 
-        减少一下 得到的 noise ， 
+        减少一下 得到的 noise,还需要将其中的函数进行某种程度的操作??
         '''
         if prox == 'l1':
             score_delta = noise_prediction_text - noise_pred_uncond

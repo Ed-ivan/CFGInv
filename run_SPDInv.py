@@ -152,12 +152,13 @@ def parse_args():
         default="a Golden Retriever standing on the groud",
         # required=True,
         # a round cake with orange frosting on a wooden plate
+        # a Golden Retriever standing on the groud
         help="Source prompt",
     )
     parser.add_argument(
         "--target",
         type=str,
-        default= "a  Golden Retriever running on the ground with a cat standing on the groud",
+        default= "a silver Golden Retriever sculpture standing on the groud",
         #"a Golden Retriever",
         # a silver cat  sculpture standing on the groud
         # required=True,
@@ -207,7 +208,7 @@ def parse_args():
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=1,
+        default=1.0,
     )
     parser.add_argument(
         "--output",
