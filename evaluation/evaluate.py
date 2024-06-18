@@ -99,7 +99,7 @@ def calculate_metric(metrics_calculator,metric, src_image, tgt_image, src_mask, 
             return metrics_calculator.calculate_clip_similarity(tgt_image, tgt_prompt,tgt_mask)
     
 all_tgt_image_folders={
-    "1_ddim+p2p" : "../output_test_k_round=10"
+    "1_ddim+p2p" : "snp/annotation_images"
     }
 
 
@@ -117,7 +117,7 @@ if __name__=="__main__":
                                                          "clip_similarity_target_image",
                                                          "clip_similarity_target_image_edit_part",
                                                          ])
-    parser.add_argument('--src_image_folder', type=str, default="data/annotation_images")
+    parser.add_argument('--src_image_folder', type=str, default="ple_images/annotation_images")
     
     parser.add_argument('--tgt_methods', nargs = '+', type=str, default=[
                                                                     "1_ddim+p2p",
@@ -153,7 +153,6 @@ if __name__=="__main__":
     edit_category_list=args.edit_category_list
     evaluate_whole_table=args.evaluate_whole_table
     tgt_image_folders={}
-    
     if evaluate_whole_table:
         for key in all_tgt_image_folders:
             if key[0] in tgt_methods:
@@ -171,6 +170,7 @@ if __name__=="__main__":
         
         csv_head=[]
         for tgt_image_folder_key,_ in tgt_image_folders.items():
+            # 选择edit_methods
             for metric in metrics:
                 csv_head.append(f"{tgt_image_folder_key}|{metric}")
         
