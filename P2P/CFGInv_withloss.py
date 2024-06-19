@@ -155,8 +155,8 @@ class CFGInversion:
 
             optimal_latent = latent.clone().detach()
             optimal_latent.requires_grad = True
-            optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.5, nesterov=True)
-            #optimizer = torch.optim.AdamW([optimal_latent], lr=self.lr)
+            #optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.5, nesterov=True)
+            optimizer = torch.optim.AdamW([optimal_latent], lr=self.lr)
             for rid in range(self.opt_round):
                 with torch.enable_grad():
                     
@@ -166,8 +166,10 @@ class CFGInversion:
                     pred_latent = self.next_step(noise_pred, t, latent_ztm1)
                     
                     loss = F.mse_loss(optimal_latent, pred_latent)
-
-                    loss.backward()
+                    prior_mean ,prior_variance = self.posterior_mean_variable(t)
+                    prior_loss = self.prior_lambda * self.log_prob_regulation(pred_latent,prior_mean,prior_variance)
+                    total_loss = loss+ prior_loss
+                    total_loss.backward()
                     
                     optimizer.step()
 
@@ -243,7 +245,7 @@ class CFGInversion:
         pass
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0):
+                 enable_threshold=True,scale =1.0,prior_lambda=0.01):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model
@@ -257,3 +259,4 @@ class CFGInversion:
         self.threshold = delta_threshold
         self.enable_threshold = enable_threshold
         self.scale = scale
+        self.prior_lambda = prior_lambda

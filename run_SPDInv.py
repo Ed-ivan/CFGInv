@@ -142,14 +142,16 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default="images/000000000008.jpg",
+        default="images/gnochi_mirror.jpeg",
+        # /home/user/jin/SPDInv/images/gnochi_mirror.jpeg
+        # images/000000000008.jpg
         # required=True,
         help="Image path",
     )
     parser.add_argument(
         "--source",
         type=str,
-        default="a Golden Retriever standing on the groud",
+        default="A cat sitting next to a mirror",
         # required=True,
         # a round cake with orange frosting on a wooden plate
         # a Golden Retriever standing on the groud
@@ -158,7 +160,7 @@ def parse_args():
     parser.add_argument(
         "--target",
         type=str,
-        default= "a silver Golden Retriever sculpture standing on the groud",
+        default= "A silver cat sculpture  sitting next to a mirror",
         #"a Golden Retriever",
         # a silver cat  sculpture standing on the groud
         # required=True,
