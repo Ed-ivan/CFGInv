@@ -1,4 +1,4 @@
-#引入 P(x)来约束  z_lanent 
+#引入 P(x)来约束  z_lanent  双向的 inversion 进行约束 
 import time
 # %%
 from typing import Optional, Union, Tuple, List, Callable, Dict
@@ -222,6 +222,7 @@ class CFGInversion:
         # tensor,scalor
         return  alpha_prod_t**0.5*latent_init ,  1-alpha_prod_t
 
+
     def log_prob_regulation(self,latent: Union[torch.FloatTensor, np.ndarray],posterior_mean, posterior_variable):
         
         '''
@@ -229,7 +230,7 @@ class CFGInversion:
         logq(x_{t}|x_{0}) = sum(log(x_{tj}|x_{oj})) (按照每个都是独立分布进行处理的)
         '''
         #log_pz = 0.5 * torch.sum(torch.log(2 * torch.pi * posterior_variable*2)) + torch.sum((latent - posterior_mean)**2 / (2 * posterior_variable**2))
-        log_pz =  torch.mean((latent - posterior_mean)**2 / (2 * posterior_variable))
+        log_pz =  torch.mean((latent - posterior_mean)**2 / (2 * posterior_variable**2))
         return log_pz
 
     #TODO:  ProxEdit_Improving_Tuning-Free_Real_Image_Editing_With_Proximal_Guidance  this fn is not used !
@@ -251,7 +252,7 @@ class CFGInversion:
         pass
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0,prior_lambda=0.001):
+                 enable_threshold=True,scale =1.0,prior_lambda=0.01):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model

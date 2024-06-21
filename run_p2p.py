@@ -17,12 +17,9 @@ import torch.nn.functional as F
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 from utils.control_utils import load_512, make_controller
-from P2P.SPDInv import SourcePromptDisentanglementInversion
-
-
+#from P2P.SPDInv import SourcePromptDisentanglementInversion
+from P2P.CFGInv_withloss import CFGInversion 
 # this file is to run rescontruction results 
-
-
 
 def mask_decode(encoded_mask,image_shape=[512,512]):
     length=image_shape[0]*image_shape[1]
@@ -41,8 +38,6 @@ def mask_decode(encoded_mask,image_shape=[512,512]):
     mask_array[:,-1]=1
             
     return mask_array
-
-
 
 @torch.no_grad()
 def recontruction(
@@ -99,9 +94,6 @@ def recontruction(
     else:
         image = latents
     return image, latent
-
-
-
 @torch.no_grad()
 def P2P_inversion_and_recontruction(
         image_path,
@@ -132,7 +124,7 @@ def P2P_inversion_and_recontruction(
     ldm_stable = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", scheduler=scheduler).to(
         device)
     
-    SPD_inversion = SourcePromptDisentanglementInversion(ldm_stable, K_round=K_round, num_ddim_steps=num_of_ddim_steps,
+    SPD_inversion = CFGInversion(ldm_stable, K_round=K_round, num_ddim_steps=num_of_ddim_steps,
                                                          learning_rate=learning_rate, delta_threshold=delta_threshold,
                                                          enable_threshold=enable_threshold)
     (image_gt, image_enc, image_enc_latent), x_stars, uncond_embeddings = SPD_inversion.invert(
@@ -158,13 +150,12 @@ def P2P_inversion_and_recontruction(
     filename = image_path.split('/')[-1].replace(".jpg",".png")
     Image.fromarray(np.concatenate(images, axis=1)).save(f"{output_dir}/{sample_count}_P2P_{filename}")
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Input your dataset path")
     parser.add_argument('--data_path', type=str, default="ple_images/") # the editing category that needed to run
     parser.add_argument('--edit_category_list', nargs = '+', type=str, default=["0","1","2","3","4","5","6","7","8","9"]) # the editing category that needed to run
     parser.add_argument(
-        "--K_round",
+        "--K_round", 
         type=int,
         default=10,
         help="Optimization Round",
@@ -205,15 +196,13 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="output_test_k_round=10",
+        default="test_loss",
         help="Save editing results",
     )
     args = parser.parse_args()
     return args
 
 # 里面的具体编辑还得看下人家 direactinversion 的  
-
-
 if __name__ == "__main__":
     args = parse_args()
     params = {}

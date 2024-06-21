@@ -16,7 +16,7 @@ import torch.nn.functional as F
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 from utils.control_utils import load_512, make_controller
 # from P2P.SPDInv import SourcePromptDisentanglementInversion
-from P2P.CFGInv import CFGInversion
+from P2P.CFGInv_withloss import CFGInversion
 
 # this file is to run rescontruction results 
 
@@ -176,7 +176,7 @@ def parse_args():
     parser.add_argument(
         "--K_round",
         type=int,
-        default=20,
+        default=15,
         help="Optimization Round",
     )
     parser.add_argument(
@@ -210,7 +210,7 @@ def parse_args():
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=1.0,
+        default=7.5,
     )
     parser.add_argument(
         "--output",

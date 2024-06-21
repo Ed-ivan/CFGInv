@@ -145,7 +145,7 @@ class CFGInversion:
 
             optimal_latent = latent.clone().detach()
             optimal_latent.requires_grad = True
-            optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.5, nesterov=True)
+            optimizer = torch.optim.SGD([optimal_latent], lr=self.lr, momentum=0.9, nesterov=True)
             #optimizer = torch.optim.AdamW([optimal_latent], lr=self.lr)
             for rid in range(self.opt_round):
                 with torch.enable_grad():
