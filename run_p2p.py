@@ -196,7 +196,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="test_loss",
+        default="test_loss_4e-6",
         help="Save editing results",
     )
     args = parser.parse_args()

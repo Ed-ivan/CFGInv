@@ -123,9 +123,7 @@ class SourcePromptDisentanglementInversion:
         latent = latent.clone().detach()
         for i in range(self.num_ddim_steps):
             t = self.model.scheduler.timesteps[len(self.model.scheduler.timesteps) - i - 1]
-            # 应该就是这里修改的地方 
             noise_pred = self.get_noise_pred_single(latent, t, cond_embeddings)
-            # TODO: 那么就是需要修改这个地方了 还得得到这个uncond的  
             latent_ztm1 = latent.clone().detach()
             latent = self.next_step(noise_pred, t, latent_ztm1)
 

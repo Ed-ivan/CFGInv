@@ -4,5 +4,6 @@ ple_images/
 snp/
 output_test_k_round=10
 test_loss/
+test_loss_4e-6/
 
 

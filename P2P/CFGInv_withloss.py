@@ -85,16 +85,7 @@ class CFGInversion:
         noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
         noise_cfg = noise_pred_uncond + self.scale *(noise_prediction_text-noise_pred_uncond)
         return noise_cfg
-    
-        #TODO: >
-    #    if low_resource:
-    #       noise_pred_uncond = model.unet(latents, t, encoder_hidden_states=context[0])["sample"]
-    #       noise_prediction_text = model.unet(latents, t, encoder_hidden_states=context[1])["sample"]
-    #    else:
-    #       latents_input = torch.cat([latents] * 2)
-    #       noise_pred = model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
-    #       noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
-        #return noise_pred
+
 
 
     @torch.no_grad()     
@@ -251,7 +242,7 @@ class CFGInversion:
         pass
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0,prior_lambda=0.001):
+                 enable_threshold=True,scale =1.0,prior_lambda=0.0006):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model

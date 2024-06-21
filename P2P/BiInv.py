@@ -1,4 +1,4 @@
-#引入 P(x)来约束  z_lanent  双向的 inversion 进行约束 
+# 通过实验所发现的双向性来进行优化,也通过考虑双向性 
 import time
 # %%
 from typing import Optional, Union, Tuple, List, Callable, Dict
@@ -52,7 +52,7 @@ def computate_mvg(z:torch.FloatTensor):
     return loss
 
 
-class CFGInversion:
+class BiInversion:
     def prev_step(self, model_output: Union[torch.FloatTensor, np.ndarray], timestep: int,
                   sample: Union[torch.FloatTensor, np.ndarray]):
         prev_timestep = timestep - self.scheduler.config.num_train_timesteps // self.scheduler.num_inference_steps
@@ -80,23 +80,17 @@ class CFGInversion:
 
     def get_noise_pred_single(self,latents,t,context):
         #但是这么修改的话， 直接就会出现了错误  。 应该怎么修改？ 
+        noise_pred = self.model.unet(latents, t, encoder_hidden_states=context)["sample"]
+        # [1,4,64,64]
+        return noise_pred
+        
+    
+    def get_noise_pred_cfg(self,latents,t,context):
         latents_input = torch.cat([latents] * 2)
         noise_pred = self.model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
         noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
         noise_cfg = noise_pred_uncond + self.scale *(noise_prediction_text-noise_pred_uncond)
         return noise_cfg
-    
-        #TODO: >
-    #    if low_resource:
-    #       noise_pred_uncond = model.unet(latents, t, encoder_hidden_states=context[0])["sample"]
-    #       noise_prediction_text = model.unet(latents, t, encoder_hidden_states=context[1])["sample"]
-    #    else:
-    #       latents_input = torch.cat([latents] * 2)
-    #       noise_pred = model.unet(latents_input, t, encoder_hidden_states=context)["sample"]
-    #       noise_pred_uncond, noise_prediction_text = noise_pred.chunk(2)
-        #return noise_pred
-
-
     @torch.no_grad()     
     def latent2image(self, latents, return_type='np'):
         latents = 1 / 0.18215 * latents.detach()
@@ -147,17 +141,12 @@ class CFGInversion:
         latent_init = latent.clone().detach()
         for i in range(self.num_ddim_steps):
             t = self.model.scheduler.timesteps[len(self.model.scheduler.timesteps) - i - 1]
-            noise_pred = self.get_noise_pred_single(latent, t, self.context)
+            noise_pred = self.get_noise_pred_single(latent, t, cond_embeddings)
             # TODO: 那么就是需要修改这个地方了 还得得到这个uncond的  
             latent_ztm1 = latent.clone().detach()
             latent = self.next_step(noise_pred, t, latent_ztm1)
             ################ below code is from  SPDInv optimization steps #################
 
-            # below is modified 
-            prior_mean ,prior_variance = self.posterior_mean_variable(t,latent_init)
-            prior_mean.requires_grad = False
-            prior_variance.requires_grad=False
-            # before is added! 
             optimal_latent = latent.clone().detach()
             
             optimal_latent.requires_grad = True
@@ -167,17 +156,20 @@ class CFGInversion:
                 with torch.enable_grad():
                     
                     optimizer.zero_grad()
-                    noise_pred = self.get_noise_pred_single(optimal_latent, t, self.context)
+                    noise_pred = self.get_noise_pred_single(optimal_latent, t, cond_embeddings)
+
+                    noise_cfg = self.get_noise_pred_cfg(optimal_latent,t,self.context)
                     # [1,4,64,64]
                     pred_latent = self.next_step(noise_pred, t, latent_ztm1)
                     
                     loss = F.mse_loss(optimal_latent, pred_latent)
-                    
-                    prior_loss = self.prior_lambda * self.log_prob_regulation(optimal_latent,prior_mean,prior_variance)
-                    total_loss = loss+ prior_loss
+                    with torch.no_grad():
+                        bi_constraint = self.bidirectional_constraint(optimal_latent, latent_ztm1, noise_cfg, t)
                     #print("prior_loss is : ",prior_loss)
-                    total_loss.backward()
+                    loss.backward()
                     optimizer.step()
+
+                    if bi_constraint <self.threshold:break
 
                     if self.enable_threshold and loss < self.threshold:
                         break
@@ -215,44 +207,22 @@ class CFGInversion:
         return (image_gt, image_rec, image_rec_latent), ddim_latents, uncond_embeddings
     
 
-    # help function : compute posterior_mean_variable
-    def posterior_mean_variable(self,timestep: int, latent_init: Union[torch.FloatTensor, np.ndarray]):
-        
-        alpha_prod_t = self.scheduler.alphas_cumprod[timestep]
-        # tensor,scalor
-        return  alpha_prod_t**0.5*latent_init ,  1-alpha_prod_t
+
+    def bidirectional_constraint(self,optimal_latent: Union[torch.FloatTensor, np.ndarray], latent: Union[torch.FloatTensor, np.ndarray],model_output: Union[torch.FloatTensor, np.ndarray],t):
+        '''
+        latent_next : x_t' 
+        latent x_t-1
+        noise 预测的强度 
+        返回的是  z_t 得到的 z_t-1的 
+        '''
+        latent_prev = self.prev_step(model_output,t,optimal_latent)
+        return F.mse_loss(latent_prev,latent)
 
 
-    def log_prob_regulation(self,latent: Union[torch.FloatTensor, np.ndarray],posterior_mean, posterior_variable):
-        
-        '''
-        得到里面的 p(x_{t}|x_{0})分布,计算得到的x_{t}的概率，但是由于本身 x_t 的维度非常大,所以还不能直接这么写 
-        logq(x_{t}|x_{0}) = sum(log(x_{tj}|x_{oj})) (按照每个都是独立分布进行处理的)
-        '''
-        #log_pz = 0.5 * torch.sum(torch.log(2 * torch.pi * posterior_variable*2)) + torch.sum((latent - posterior_mean)**2 / (2 * posterior_variable**2))
-        log_pz =  torch.mean((latent - posterior_mean)**2 / (2 * posterior_variable**2))
-        return log_pz
 
-    #TODO:  ProxEdit_Improving_Tuning-Free_Real_Image_Editing_With_Proximal_Guidance  this fn is not used !
-    def proximal_constants(self,prox,noise_prediction_text,noise_pred_uncond,quantile): 
-
-        '''
-        主要是为了  限制 使用 CFG_inversion 时候 embeddings_un + scale(embddings_text -embeddings_un) 
-        减少一下 得到的 noise,还需要将其中的函数进行某种程度的操作??
-        '''
-        if prox == 'l1':
-            score_delta = noise_prediction_text - noise_pred_uncond
-            if quantile > 0:
-                threshold = score_delta.abs().quantile(quantile)
-            else:
-                threshold = -quantile  # if quantile is negative, use it as a fixed threshold
-            score_delta -= score_delta.clamp(-threshold, threshold)
-            score_delta = torch.where(score_delta > 0, score_delta-threshold, score_delta)
-            score_delta = torch.where(score_delta < 0, score_delta+threshold, score_delta)
-        pass
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0,prior_lambda=0.01):
+                 enable_threshold=True,scale =1.0):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model
@@ -265,5 +235,5 @@ class CFGInversion:
         self.lr = learning_rate
         self.threshold = delta_threshold
         self.enable_threshold = enable_threshold
+        # for bidirectional scale
         self.scale = scale
-        self.prior_lambda = prior_lambda
