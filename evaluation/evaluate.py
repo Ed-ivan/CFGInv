@@ -100,7 +100,7 @@ def calculate_metric(metrics_calculator,metric, src_image, tgt_image, src_mask, 
     
 all_tgt_image_folders={
     "1_snp_inversion+p2p" : "snp/annotation_images",
-    "1_prior_inversion+p2p" :"test_loss/annotation_images"
+    "1_prior_inversion+p2p" :"test_loss_4e-6/annotation_images"
     }
 
 

@@ -43,14 +43,6 @@ def load_512(image_path, left=0, right=0, top=0, bottom=0):
 
 
 
-#TODO: 计算多元高斯的 (x-u) times sigma times (x-u)^T https://github.com/adobe-research/sam_inversion/blob/master/src/loss_utils.py
-# 里面的越小越大
-def computate_mvg(z:torch.FloatTensor):
-    z_vec = z.view(z.shape[0],1,-1)
-    loss = 0.0
-    loss += torch.bmm(z_vec, torch.transpose(z_vec, 1, 2)).mean()
-    return loss
-
 
 class CFGInversion:
     def prev_step(self, model_output: Union[torch.FloatTensor, np.ndarray], timestep: int,
@@ -77,7 +69,6 @@ class CFGInversion:
         next_sample = alpha_prod_t_next ** 0.5 * next_original_sample + next_sample_direction
         return next_sample
     
-
     def get_noise_pred_single(self,latents,t,context):
         #但是这么修改的话， 直接就会出现了错误  。 应该怎么修改？ 
         latents_input = torch.cat([latents] * 2)
@@ -220,7 +211,8 @@ class CFGInversion:
         logq(x_{t}|x_{0}) = sum(log(x_{tj}|x_{oj})) (按照每个都是独立分布进行处理的)
         '''
         #log_pz = 0.5 * torch.sum(torch.log(2 * torch.pi * posterior_variable*2)) + torch.sum((latent - posterior_mean)**2 / (2 * posterior_variable**2))
-        log_pz =  torch.mean((latent - posterior_mean)**2 / (2 * posterior_variable))
+        #log_pz =  torch.mean((latent - posterior_mean)**2 / (2 * posterior_variable))
+        log_pz =  torch.mean((latent - posterior_mean)**2)
         return log_pz
 
     #TODO:  ProxEdit_Improving_Tuning-Free_Real_Image_Editing_With_Proximal_Guidance  this fn is not used !
@@ -242,7 +234,7 @@ class CFGInversion:
         pass
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0,prior_lambda=0.0006):
+                 enable_threshold=True,scale =1.0,prior_lambda=0.00045):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model

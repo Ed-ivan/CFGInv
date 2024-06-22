@@ -4,7 +4,7 @@ import numpy as np
 
 # 读取CSV文件
 
-path="/home/user/jin/SPDInv/evaluation/evaluation_result_loss=0.01.csv"
+path="/home/user/jin/SPDInv/evaluation/evaluation_result.csv"
 df = pd.read_csv(path)
 
 # 计算每列的平均值，忽略NaN

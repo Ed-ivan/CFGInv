@@ -279,6 +279,7 @@ def register_attention_control(model, controller):
 
             attn = controller(attn, is_cross, place_in_unet)
             # 这里面调用的是  attentionWeight的 大概就是需要先调用 父类的foward 得到attention_score 
+            # 将 里面的合并起来了 
             out = torch.einsum("b i j, b j d -> b i d", attn, v)
             out = self.reshape_batch_dim_to_heads(out)
             return to_out(out)

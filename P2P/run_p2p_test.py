@@ -1,3 +1,5 @@
+# 测试集的代码
+
 # 实现 spn的 inversion 
 from typing import Optional, Union, List
 from tqdm import tqdm
@@ -196,7 +198,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="loss_4e-4.5",
+        default="test_loss_4e-6",
         help="Save editing results",
     )
     args = parser.parse_args()
@@ -226,13 +228,10 @@ if __name__ == "__main__":
     # self, method_list, device,delta_threshold,enable_threshold=True, num_ddim_steps=50,K_round=25,learning_rate=0.001
     # ple_images/mapping_file_ti2i_benchmark.json 
     #mapping_file.json
-    with open(f"{data_path}/mapping_file.json", "r") as f:
+    with open(f"{data_path}/mapping_file_ti2i_benchmark.json", "r") as f:
         editing_instruction = json.load(f)
     
     for key, item in editing_instruction.items():
-        
-        if item["editing_type_id"] not in edit_category_list:
-            continue
         
         original_prompt = item["original_prompt"].replace("[", "").replace("]", "")
         editing_prompt = item["editing_prompt"].replace("[", "").replace("]", "")
@@ -261,8 +260,7 @@ if __name__ == "__main__":
                                             "words": (blended_word[1], ),
                                             "values": (2, )
                                         } if len(blended_word) else None,
-                                        proximal=None,
-                                        # "l0"
+                                        proximal="l0",
                                         quantile=0.75,
                                         use_inversion_guidance=True,
                                         recon_lr=1,

@@ -183,6 +183,7 @@ class AttentionControlEdit(AttentionStore, abc.ABC):
         if is_cross or (self.num_self_replace[0] <= self.cur_step < self.num_self_replace[1]):
             h = attn.shape[0] // (self.batch_size)
             attn = attn.reshape(self.batch_size, h, *attn.shape[1:])
+            # 这代码 写的可以 ，将两者存到 controller中，
             attn_base, attn_repalce = attn[0], attn[1:]
             if is_cross:
                 alpha_words = self.cross_replace_alpha[self.cur_step]
@@ -231,7 +232,9 @@ class AttentionRefine(AttentionControlEdit):
     def __init__(self, prompts, num_steps: int, cross_replace_steps: float, self_replace_steps: float,
                  local_blend: Optional[LocalBlend] = None, tokenizer=None):
         super(AttentionRefine, self).__init__(prompts, num_steps, cross_replace_steps, self_replace_steps, local_blend)
+        
         self.mapper, alphas = seq_aligner.get_refinement_mapper(prompts, tokenizer)
+        # [1,77]
         self.mapper, alphas = self.mapper.to(device), alphas.to(device)
         self.alphas = alphas.reshape(alphas.shape[0], 1, 1, alphas.shape[1])
         
@@ -249,6 +252,7 @@ class AttentionReweight(AttentionControlEdit):
         super(AttentionReweight, self).__init__(prompts, num_steps, cross_replace_steps, self_replace_steps,
                                                 local_blend)
         self.equalizer = equalizer.to(device)
+        # 【1，77】 跟之后的做广播
         self.prev_controller = controller
 
 

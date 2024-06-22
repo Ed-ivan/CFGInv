@@ -9,7 +9,7 @@ from PIL import Image
 import numpy as np
 from tqdm import tqdm
 from P2P import ptp_utils
-from P2P.SPDInv import SourcePromptDisentanglementInversion
+from P2P.CFGInv_withloss import CFGInversion
 
 class Editor:
     def __init__(self, method_list, device,delta_threshold,enable_threshold=True, num_ddim_steps=50,K_round=25,learning_rate=0.001) -> None:
@@ -72,8 +72,6 @@ class Editor:
             raise NotImplementedError(f"No edit method named {edit_method}")
 
 
-
-
     def edit_image_p2p(
         self,
         image_path,
@@ -96,7 +94,7 @@ class Editor:
     ):
         image_gt = load_512(image_path)
         prompts = [prompt_src, prompt_tar]
-        SPD_inversion = SourcePromptDisentanglementInversion(self.ldm_stable, K_round=self.K_round, num_ddim_steps=num_of_ddim_steps,
+        SPD_inversion = CFGInversion(self.ldm_stable, K_round=self.K_round, num_ddim_steps=num_of_ddim_steps,
                                                          learning_rate=self.learning_rate, delta_threshold=self.delta_threshold,
                                                          enable_threshold=self.enable_threshold)
         (image_gt, image_enc, image_enc_latent), x_stars, uncond_embeddings = SPD_inversion.invert(
