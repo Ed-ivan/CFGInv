@@ -72,6 +72,7 @@ def editing_p2p(
                                                inference_stage=inference_stage, x_stars=x_stars, i=i, **kwargs)
     if return_type == 'image':
         image = ptp_utils.latent2image(model.vae, latents)
+        
     else:
         image = latents
     return image, latent

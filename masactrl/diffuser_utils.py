@@ -78,7 +78,7 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
         image = self.vae.decode(latents)['sample']
         if return_type == 'np':
             image = (image / 2 + 0.5).clamp(0, 1)
-            image = image.cpu().permute(0, 2, 3, 1).numpy()[0]
+            image = image.cpu().permute(0, 2, 3, 1).numpy()
             image = (image * 255).astype(np.uint8)
         elif return_type == "pt":
             image = (image / 2 + 0.5).clamp(0, 1)
@@ -232,7 +232,7 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
             #     noise_pred_uncon, noise_pred_con = noise_pred.chunk(2, dim=0)
             #     noise_pred = noise_pred_uncon + guidance_scale_batch * (noise_pred_con - noise_pred_uncon)
             
-            # do CFG separately for source and target
+            # do CFG separately for source and target   
             if do_separate_cfg:
                 noise_pred_uncon, noise_pred_con = noise_pred.chunk(2, dim=0)
                 noise_pred_0 = noise_pred_uncon[:batch_size//2,...] + guidance_scale_0 * (noise_pred_con[:batch_size//2,...] - noise_pred_uncon[:batch_size//2,...])                
@@ -256,8 +256,7 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
             latents, pred_x0 = self.step(noise_pred, t, latents)
             latents_list.append(latents)
             pred_x0_list.append(pred_x0)
-
-        image = self.latent2image(latents, return_type="pt")
+        image = self.latent2image(latents, return_type='np')
         if return_intermediates:
             pred_x0_list = [self.latent2image(img, return_type="pt") for img in pred_x0_list]
             latents_list = [self.latent2image(img, return_type="pt") for img in latents_list]

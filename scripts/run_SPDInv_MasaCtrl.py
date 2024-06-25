@@ -1,9 +1,12 @@
+import sys
+sys.path.append('.')
+sys.path.append('..')
 from torchvision.utils import save_image
 from masactrl.diffuser_utils import MasaCtrlPipeline
 from masactrl.masactrl_utils import regiter_attention_editor_diffusers
 from masactrl.masactrl import MutualSelfAttentionControl
-
 from utils.control_utils import load_image,load_512
+# load_image is not used!
 
 import argparse
 from typing import Union
@@ -50,7 +53,6 @@ def MasaCtrl_inversion_and_edit(
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
     model = MasaCtrlPipeline.from_pretrained(model_path, scheduler=scheduler, cross_attention_kwargs={"scale": 0.5}).to(device)
-    source_image = load_image(source_image_path, device)
     os.makedirs(out_dir, exist_ok=True)
     sample_count = len(os.listdir(out_dir))
     prompts = [source_prompt, target_prompt]
@@ -67,9 +69,12 @@ def MasaCtrl_inversion_and_edit(
 
     # hijack the attention module
     editor = MutualSelfAttentionControl(masa_step, masa_layer, inject_uncond=inject_uncond, inject_cond=inject_cond)
+    # NOTE:  话说这是什么意思 ， ref_token_idx =1  , cur_token_idx=2??   这是什么鬼啊 ？？ 
     # editor = MutualSelfAttentionControlMaskAuto(masa_step, masa_layer, ref_token_idx=1, cur_token_idx=2)  # NOTE: replace the token idx with the corresponding index in the prompt if needed
     regiter_attention_editor_diffusers(model, editor)
 
+
+    # 已经得到了 latents_code 
     image_masactrl = model(prompts,
                            latents=start_code,
                            num_inference_steps=num_inference_steps,
@@ -81,14 +86,16 @@ def MasaCtrl_inversion_and_edit(
                            npi_interp=npi_interp,
                            npi_step=npi_step,
                            )
+    
 
     filename = source_image_path.split('/')[-1]
     save_path = f"{out_dir}/{sample_count}_MasaCtrl_{filename}".replace(".jpg",".png")
-    out_image = torch.cat([source_image * 0.5 + 0.5, image_masactrl], dim=0)
-    save_image(out_image, save_path)
-
-    print("Syntheiszed images are saved in", save_path)
-    print("Real image | Reconstructed image | Edited image")
+    out_image=Image.fromarray(np.concatenate((image_gt,image_masactrl[0],image_masactrl[-1]),axis=1))
+    out_image.save(save_path)
+    #out_image = torch.cat([image_gt * 0.5 + 0.5, image_masactrl], dim=0)
+    #save_image(out_image, save_path)
+    # print("Syntheiszed images are saved in", save_path)
+    # print("Real image | Reconstructed image | Edited image")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Input your image and editing prompt.")

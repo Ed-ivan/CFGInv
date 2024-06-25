@@ -26,10 +26,7 @@ class Editor:
                                     beta_schedule="scaled_linear",
                                     clip_sample=False,
                                     set_alpha_to_one=False)
-        self.ldm_stable = StableDiffusionPipeline.from_pretrained(
-            "CompVis/stable-diffusion-v1-4", scheduler=self.scheduler).to(device)
-        self.ldm_stable.scheduler.set_timesteps(self.num_ddim_steps)
-
+        
     #
     def __call__(self, 
                 edit_method,
@@ -39,6 +36,7 @@ class Editor:
                 guidance_scale=7.5,
                 proximal=None,
                 quantile=0.7,
+                prox:str = None, 
                 use_reconstruction_guidance=False,
                 recon_t=400,
                 recon_lr=0.1,
@@ -68,6 +66,9 @@ class Editor:
             return self.edit_image_directinversion(image_path=image_path, prompt_src=prompt_src, prompt_tar=prompt_tar, guidance_scale=guidance_scale, 
                                         cross_replace_steps=cross_replace_steps, self_replace_steps=self_replace_steps, 
                                         blend_word=blend_word, eq_params=eq_params, is_replace_controller=is_replace_controller)
+        
+        elif edit_method=="masactrl":
+            return self.edit_image_masactrl(image_path=image_path,prompt_src=prompt_src,prompt_tar=prompt_tar,guidance_scale=guidance_scale)
         else:
             raise NotImplementedError(f"No edit method named {edit_method}")
 
@@ -92,6 +93,10 @@ class Editor:
         **kwargs
         #TODO： 这样写  
     ):
+        
+        self.ldm_stable = StableDiffusionPipeline.from_pretrained(
+            "CompVis/stable-diffusion-v1-4", scheduler=self.scheduler).to(self.device)
+        self.ldm_stable.scheduler.set_timesteps(self.num_ddim_steps)
         image_gt = load_512(image_path)
         prompts = [prompt_src, prompt_tar]
         SPD_inversion = CFGInversion(self.ldm_stable, K_round=self.K_round, num_ddim_steps=num_of_ddim_steps,
@@ -155,3 +160,73 @@ class Editor:
         # you need to change this when you have a high ram 
         #return Image.fromarray(np.concatenate((image_instruct, image_gt, images[0],images[-1]),axis=1))
         return Image.fromarray(np.concatenate((image_gt, images[0],images[-1]),axis=1))
+
+
+    #TODO:  因为其实并不打算使用什么关于 npi的东西，所以  prox,npi
+    # 的参数 直接 不传入了 
+    def edit_image_masactrl(self,
+        image_path,
+        prompt_src,
+        prompt_tar,
+        num_of_ddim_steps,
+        guidance_scale=7.5,
+        masa_step: int = 4,
+        masa_layer: int = 10,
+        inject_uncond: str = "src",
+        inject_cond: str = "src",
+        generator: Optional[torch.Generator] = None,
+        prox_step: int = 0,
+        prox: str = None,
+        quantile: float = 0.6,
+        npi: bool = False,
+        npi_interp: float = 0,
+        npi_step: int = 0,
+        offsets=(0, 0, 0, 0),
+        inference_stage=True,
+        num_inference_steps: int = 50,
+        **kwargs):
+        # 需要参考 masactrl 的方法 
+            from masactrl.diffuser_utils import MasaCtrlPipeline
+            from masactrl.masactrl_utils import regiter_attention_editor_diffusers
+            from masactrl.masactrl import MutualSelfAttentionControl
+            self.ldm_stable = MasaCtrlPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", scheduler=self.scheduler, cross_attention_kwargs={"scale": 0.5}).to(self.device)
+            prompts = [prompt_src, prompt_tar]
+            SPD_inversion = CFGInversion(self.ldm_stable, K_round=self.K_round, num_ddim_steps=num_of_ddim_steps,
+                                                         learning_rate=self.learning_rate, delta_threshold=self.delta_threshold,
+                                                         enable_threshold=self.enable_threshold)
+            (image_gt, image_enc, image_enc_latent), x_stars, uncond_embeddings = SPD_inversion.invert(
+            image_path, prompt_src, offsets=offsets, npi_interp=npi_interp, verbose=True)
+
+            z_inverted_noise_code = x_stars[-1]
+    
+            del SPD_inversion
+
+            torch.cuda.empty_cache()
+
+            editor = MutualSelfAttentionControl(masa_step, masa_layer, inject_uncond=inject_uncond, inject_cond=inject_cond)
+            # NOTE:  话说这是什么意思 ， ref_token_idx =1  , cur_token_idx=2??   这是什么鬼啊 ？？ 
+            # editor = MutualSelfAttentionControlMaskAuto(masa_step, masa_layer, ref_token_idx=1, cur_token_idx=2)  # NOTE: replace the token idx with the corresponding index in the prompt if needed
+            regiter_attention_editor_diffusers(self.ldm_stable, editor)
+
+            image_masactrl = self.ldm_stable(prompts,
+                           latents=z_inverted_noise_code,
+                           num_inference_steps=num_inference_steps,
+                           guidance_scale=[1, guidance_scale],
+                           neg_prompt=prompt_src if npi else None,
+                           prox=prox,
+                           prox_step=prox_step,
+                           quantile=quantile,
+                           npi_interp=npi_interp,
+                           npi_step=npi_step,
+                           )
+            out_image=Image.fromarray(np.concatenate((image_gt,image_masactrl[0],image_masactrl[-1]),axis=1))
+            # print("Real image | Reconstructed image | Edited image")
+            return out_image
+    
+            
+    
+
+
+
+
+        

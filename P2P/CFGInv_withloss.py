@@ -234,7 +234,7 @@ class CFGInversion:
         pass
 
     def __init__(self, model, K_round=25, num_ddim_steps=50, learning_rate=0.001, delta_threshold=5e-6,
-                 enable_threshold=True,scale =1.0,prior_lambda=0.00045):
+                 enable_threshold=True,scale =1.0,prior_lambda=0.0):
         scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False,
                                   set_alpha_to_one=False)
         self.model = model

@@ -53,36 +53,10 @@ class MutualSelfAttentionControl(AttentionBase):
             return super().forward(q, k, v, sim, attn, is_cross, place_in_unet, num_heads, **kwargs)
 
         qu, qc = q.chunk(2)
+        #不对啊  ，为啥还需要进行chunk? 
         ku, kc = k.chunk(2)
         vu, vc = v.chunk(2)
         attnu, attnc = attn.chunk(2)
-
-        # if self.inject_uncond == "src":
-        #     out_u = self.attn_batch(qu, ku[:num_heads], vu[:num_heads], None, attnu, is_cross, place_in_unet, num_heads, **kwargs)
-        # elif self.inject_uncond == "joint":
-        #     out_u = self.attn_batch(qu, ku, vu, None, attnu, is_cross, place_in_unet, num_heads, **kwargs)
-        # elif self.inject_uncond == "none":  # no swap
-        #     out_u = torch.cat([
-        #         self.attn_batch(qu[:num_heads], ku[:num_heads], vu[:num_heads], None, attnu, is_cross, place_in_unet, num_heads, **kwargs),
-        #         self.attn_batch(qu[num_heads:], ku[num_heads:], vu[num_heads:], None, attnu, is_cross, place_in_unet, num_heads, **kwargs)], dim=0)
-        # elif self.inject_uncond == "tar":  # this should never be used
-        #     out_u = self.attn_batch(qu, ku[num_heads:], vu[num_heads:], None, attnu, is_cross, place_in_unet, num_heads, **kwargs)
-        # else:
-        #     raise NotImplementedError
-        # if self.inject_cond == "src":
-        #     out_c = self.attn_batch(qc, kc[:num_heads], vc[:num_heads], None, attnc, is_cross, place_in_unet, num_heads, **kwargs)
-        # elif self.inject_cond == "joint":
-        #     out_c = self.attn_batch(qc, kc, vc, None, attnc, is_cross, place_in_unet, num_heads, **kwargs)
-        # elif self.inject_cond == "none":  # no swap
-        #     out_c = torch.cat([
-        #         self.attn_batch(qc[:num_heads], kc[:num_heads], vc[:num_heads], None, attnc, is_cross, place_in_unet, num_heads, **kwargs),
-        #         self.attn_batch(qc[num_heads:], kc[num_heads:], vc[num_heads:], None, attnc, is_cross, place_in_unet, num_heads, **kwargs)], dim=0)
-        # elif self.inject_cond == "tar":  # this should never be used
-        #     out_c = self.attn_batch(qc, kc[num_heads:], vc[num_heads:], None, attnc, is_cross, place_in_unet, num_heads, **kwargs)
-        # else:
-        #     raise NotImplementedError
-        # out = torch.cat([out_u, out_c], dim=0)
-
         out_u_0 = self.attn_batch(qu[:num_heads], ku[:num_heads], vu[:num_heads], None, attnu, is_cross, place_in_unet, num_heads, **kwargs)
         out_c_0 = self.attn_batch(qc[:num_heads], kc[:num_heads], vc[:num_heads], None, attnc, is_cross, place_in_unet, num_heads, **kwargs)
         if self.inject_uncond == "src":
@@ -102,6 +76,7 @@ class MutualSelfAttentionControl(AttentionBase):
         else:
             raise NotImplementedError
         out = torch.cat([out_u_0, out_u_1, out_c_0, out_c_1], dim=0)
+        #为啥输出是4个？ 
 
         return out
 

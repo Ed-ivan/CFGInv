@@ -157,7 +157,7 @@ def parse_args():
     parser.add_argument(
         "--K_round", 
         type=int,
-        default=10,
+        default=25,
         help="Optimization Round",
     )
     parser.add_argument(
@@ -196,7 +196,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="loss_4e-4.5",
+        default="snp_k=25",
         help="Save editing results",
     )
     args = parser.parse_args()
@@ -246,8 +246,7 @@ if __name__ == "__main__":
                 print(f"editing image [{image_path}] with [p2p]")
                 #setup_seed()
                 torch.cuda.empty_cache() 
-                #TODO: 里面的模型直接写死了就是 "CompVis/stable-diffusion-v1-4"
-                #然后 eq_ 的这里写一下 
+                #NOTE: 如果需要修改 什么具体参数 ， 还需要再edit 中进行修改
                 edited_image = editor(edit_method,
                                          image_path=image_path,
                                         prompt_src=original_prompt,
