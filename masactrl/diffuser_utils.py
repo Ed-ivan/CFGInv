@@ -128,7 +128,6 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
         else:
             # guidance_scale_batch = torch.tensor([guidance_scale], device=DEVICE).reshape(1, 1, 1, 1)
             do_separate_cfg = False
-
         # text embeddings
         text_input = self.tokenizer(
             prompt,
@@ -136,7 +135,6 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
             max_length=77,
             return_tensors="pt"
         )
-
         text_embeddings = self.text_encoder(text_input.input_ids.to(DEVICE))[0]
         print("input text embeddings :", text_embeddings.shape)
         if kwds.get("dir"):

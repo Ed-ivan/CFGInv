@@ -1,12 +1,5 @@
 outputs/
 output_res/
-ple_images/
+null_k=25/
 snp/
-output_test_k_round=10
-test_loss/
-test_loss_4e-6/
-loss_2e-6/
-loss_4e-6/
-snp_k=10/
-snp_k=25/
 

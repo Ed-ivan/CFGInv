@@ -13,6 +13,8 @@ from P2P.SPDInv_for_PNP import get_PNP_input
 from PNP.pnp_utils import register_time,register_attention_control_efficient,register_conv_control_efficient,dilate
 from PNP.pnp_utils import get_timesteps
 
+
+# 这代码 写的
 def setup_seed(seed=1234):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -183,7 +185,7 @@ if __name__ == "__main__":
     image_path = args.input
     prompt_src = args.source
     prompt_tar = args.target
-
+    #  应该还是照着 这个修改 感觉才可以啊  
     pnp = PNP(model_key)
     edited_image = PnP_inversion_and_edit(
         image_path=image_path,

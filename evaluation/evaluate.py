@@ -99,8 +99,9 @@ def calculate_metric(metrics_calculator,metric, src_image, tgt_image, src_mask, 
             return metrics_calculator.calculate_clip_similarity(tgt_image, tgt_prompt,tgt_mask)
     
 all_tgt_image_folders={
-    "1_snp_inversion+p2p" : "snp/annotation_images",
-    "1_prior_inversion+p2p" :"loss_4e-4.5_k=25/annotation_images"
+    "1_snp_inversion+p2p" : "snp_k=25/annotation_images",
+    "1_prior_inversion+p2p" :"loss_4e-4.5_k=25/annotation_images",
+    "snp+masactrl":"masactrl_k=25/annotation_images"
     }
 
 
@@ -114,9 +115,8 @@ if __name__=="__main__":
                                                          "mse_unedit_part",
                                                          "ssim_unedit_part",
                                                          "clip_similarity_source_image",
-
                                                          "clip_similarity_target_image",
-                                                         "clip_similarity_target_image_edit_part",
+                                                         #"clip_similarity_target_image_edit_part",
                                                          ])
     parser.add_argument('--src_image_folder', type=str, default="ple_images/annotation_images")
     

@@ -3,8 +3,7 @@ import numpy as np
 from PIL import Image
 import torch.nn.functional as nnf
 from torch.optim.adam import Adam
-
-from models.p2p.attention_control import register_attention_control
+from .ptp_utils import register_attention_control
 from utils.utils import slerp_tensor, image2latent, latent2image
 
 class NegativePromptInversion:
@@ -110,6 +109,8 @@ class NegativePromptInversion:
 
 
 
+
+# null text inversion中的内容
 class NullInversion:
     
     def prev_step(self, model_output, timestep: int, sample):
@@ -203,6 +204,7 @@ class NullInversion:
             if num_inner_steps!=0:
                 uncond_embeddings.requires_grad = True
                 optimizer = Adam([uncond_embeddings], lr=1e-2 * (1. - i / 100.))
+                
                 latent_prev = latents[len(latents) - i - 2]
                 with torch.no_grad():
                     noise_pred_cond = self.get_noise_pred_single(latent_cur, t, cond_embeddings)
@@ -227,10 +229,12 @@ class NullInversion:
     def invert(self, image_gt, prompt, guidance_scale, num_inner_steps=10, early_stop_epsilon=1e-5):
         self.init_prompt(prompt)
         register_attention_control(self.model, None)
+        #TODO:  这里注册的是个啥？？
         
         image_rec, ddim_latents = self.ddim_inversion(image_gt)
         
         uncond_embeddings = self.null_optimization(ddim_latents, num_inner_steps, early_stop_epsilon,guidance_scale)
+        
         return image_gt, image_rec, ddim_latents, uncond_embeddings
     
     def __init__(self, model,num_ddim_steps):

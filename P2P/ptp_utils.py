@@ -75,7 +75,7 @@ def dilate(image, kernel_size, stride=1, padding=0):
 
 @torch.no_grad()
 def diffusion_step(model, controller, latents, context, t, guidance_scale, low_resource=False,
-                   inference_stage=True, prox="l0", quantile=0.7,
+                   inference_stage=True, prox=None, quantile=0.7,
                    image_enc=None, recon_lr=1, recon_t=400,
                    inversion_guidance=True, x_stars=None, i=0, noise_loss=None, **kwargs):
                     # inversion_guidance = False, x_stars = None, i = 0, noise_loss = None, ** kwargs):

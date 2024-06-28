@@ -5,16 +5,13 @@ import torch
 import json
 from diffusers import StableDiffusionPipeline
 import numpy as np
-
 from editor import Editor
 from P2P import ptp_utils
 from PIL import Image
 import os
 from P2P.scheduler_dev import DDIMSchedulerDev
 import argparse
-
 import torch.nn.functional as F
-
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 from utils.control_utils import load_512, make_controller
 #from P2P.SPDInv import SourcePromptDisentanglementInversion
@@ -154,6 +151,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Input your dataset path")
     parser.add_argument('--data_path', type=str, default="ple_images/") # the editing category that needed to run
     parser.add_argument('--edit_category_list', nargs = '+', type=str, default=["0","1","2","3","4","5","6","7","8","9"]) # the editing category that needed to run
+    parser.add_argument( "--edit_methods",  type=str, default="masactrl", help="edit methods that chooses", )
     parser.add_argument(
         "--K_round", 
         type=int,
@@ -196,7 +194,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="snp_k=25",
+        default="null_k=25",
         help="Save editing results",
     )
     args = parser.parse_args()
@@ -216,7 +214,9 @@ if __name__ == "__main__":
     params['data_path'] = args.data_path
     data_path=args.data_path
     output_path=args.output
-    edit_method="p2p"
+    # 改成换成参数的
+    edit_method=args.edit_methods
+    #"p2p"
     params['edit_method'] =edit_method
 
     edit_category_list=args.edit_category_list
