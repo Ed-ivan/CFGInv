@@ -3,6 +3,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np
 import PIL.Image as Image
 import torch
+import torch.nn.functional as F
+from torchvision.io import read_image
 
 def slerp(val, low, high):
     """ 
@@ -152,4 +154,13 @@ def txt_draw(text,
     
     plt.close('all')
     
+    return image
+
+
+
+def load_image(image_path, device):
+    image = read_image(image_path)
+    image = image[:3].unsqueeze_(0).float() / 127.5 - 1.  # [-1, 1]
+    image = F.interpolate(image, (512, 512))
+    image = image.to(device)
     return image

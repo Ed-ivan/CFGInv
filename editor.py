@@ -3,7 +3,7 @@ import torch
 from P2P.scheduler_dev import DDIMSchedulerDev
 from utils.control_utils import EmptyControl, AttentionStore, make_controller
 from diffusers import StableDiffusionPipeline
-from utils.utils import load_512, latent2image, txt_draw
+from utils.utils import load_512, latent2image, txt_draw,load_image
 from typing import Optional, Union, List
 from PIL import Image
 import numpy as np
@@ -30,10 +30,10 @@ class Editor:
                                     beta_schedule="scaled_linear",
                                     clip_sample=False,
                                     set_alpha_to_one=False)
-        self.ldm_stable = StableDiffusionPipeline.from_pretrained(
-            "CompVis/stable-diffusion-v1-4", scheduler=self.scheduler).to(self.device)
-        self.ldm_stable.scheduler.set_timesteps(self.num_ddim_steps)
-        # 真的是醉了啊， 每次执行的时候masactrl时候将其注释掉
+        # self.ldm_stable = StableDiffusionPipeline.from_pretrained(
+        #     "CompVis/stable-diffusion-v1-4", scheduler=self.scheduler).to(self.device)
+        # self.ldm_stable.scheduler.set_timesteps(self.num_ddim_steps)
+        #NOTE: when you run masactrl, just Comment out the line  
         self.ldm_stable = MasaCtrlPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", scheduler=self.scheduler, cross_attention_kwargs={"scale": 0.5}).to(self.device)
 
         
@@ -127,8 +127,10 @@ class Editor:
                                         cross_replace_steps=cross_replace_steps, self_replace_steps=self_replace_steps, 
                                         blend_word=blend_word, eq_params=eq_params, is_replace_controller=is_replace_controller)
         
-        elif edit_method=="masactrl":
+        elif edit_method in ["snp+masactrl","prior_masactrl"]:
             return self.edit_image_masactrl(image_path=image_path,prompt_src=prompt_src,prompt_tar=prompt_tar,guidance_scale=guidance_scale,num_of_ddim_steps=self.num_ddim_steps)
+        elif edit_method =="ddim_masactrl":
+            return self.edit_image_ddim_masactrl(image_path=image_path,prompt_src=prompt_src,prompt_tar=prompt_tar,guidance_scale=guidance_scale)
         else:
             raise NotImplementedError(f"No edit method named {edit_method}")
     #TODO:  这里肯定 不使用 proximal 方式来做的
@@ -338,7 +340,46 @@ class Editor:
             # print("Real image | Reconstructed image | Edited image")
             return out_image
     
-   
+
+    def edit_image_ddim_masactrl(self, image_path,prompt_src,prompt_tar,guidance_scale,step=4,layper=10):
+        source_image=load_image(image_path, self.device)
+        
+
+        from masactrl.masactrl_utils import AttentionBase
+        prompts=["", prompt_tar]
+        
+        start_code, latents_list = self.ldm_stable.invert(source_image,
+                                            "",
+                                            guidance_scale=guidance_scale,
+                                            num_inference_steps=self.num_ddim_steps,
+                                            return_intermediates=True)
+        start_code = start_code.expand(len(prompts), -1, -1, -1)
+        
+        # results of direct synthesis
+        editor = AttentionBase()
+        regiter_attention_editor_diffusers(self.ldm_stable, editor)
+        image_fixed = self.ldm_stable([prompt_tar],
+                            latents=start_code[-1:],
+                            num_inference_steps=self.num_ddim_steps,
+                            guidance_scale=guidance_scale)
+        
+        # hijack the attention module
+        editor = MutualSelfAttentionControl(step, layper)
+        regiter_attention_editor_diffusers(self.ldm_stable, editor)
+
+        # inference the synthesized image
+        image_masactrl = self.ldm_stable(prompts,
+                            latents=start_code,
+                            guidance_scale=guidance_scale)
+        
+        #image_instruct = txt_draw(f"source prompt: {prompt_src}\ntarget prompt: {prompt_tar}")
+        out_image=np.concatenate((
+                                ((source_image[0].permute(1,2,0).detach().cpu().numpy() * 0.5 + 0.5)*255).astype(np.uint8),
+                                image_masactrl[0],image_masactrl[-1]),1)
+        
+        return Image.fromarray(out_image)
+    
+
     # pnp的话 则是需要环境为0.17.0 里面的register 方法 真的需要仔细一点看 才可以 
     def edit_pnp(self):
         pass

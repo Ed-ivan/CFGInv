@@ -194,7 +194,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="null_k=25",
+        default="ddim_masactrl",
         help="Save editing results",
     )
     args = parser.parse_args()

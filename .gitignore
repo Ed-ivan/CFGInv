@@ -2,4 +2,4 @@ outputs/
 output_res/
 null_k=25/
 snp/
-
+ddim_masactrl/
