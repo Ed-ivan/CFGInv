@@ -111,6 +111,7 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
         quantile=0.7,
         npi_interp=0,
         npi_step=0,
+        noise_loss_list=None,
         **kwds):
         DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         if isinstance(prompt, list):
@@ -118,7 +119,6 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
         elif isinstance(prompt, str):
             if batch_size > 1:
                 prompt = [prompt] * batch_size
-        
         if isinstance(guidance_scale, (tuple, list)):
             assert len(guidance_scale) == 2
             # guidance_scale_batch = torch.tensor(guidance_scale, device=DEVICE).reshape(2, 1, 1, 1)
@@ -252,6 +252,8 @@ class MasaCtrlPipeline(StableDiffusionPipeline):
 
             # compute the previous noise sample x_t -> x_t-1
             latents, pred_x0 = self.step(noise_pred, t, latents)
+            if noise_loss_list is not None:
+                latents = torch.concat((latents[:1]+noise_loss_list[i][:1],latents[1:]))
             latents_list.append(latents)
             pred_x0_list.append(pred_x0)
         image = self.latent2image(latents, return_type='np')

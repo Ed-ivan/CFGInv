@@ -273,13 +273,11 @@ def register_time(model, t):
             setattr(module, 't', t)
     module = model.unet.mid_block.attentions[0].transformer_blocks[0].attn1
     setattr(module, 't', t)
-
 #TODO: 但是这个地方写的好别捏啊,要不重构一下，但是 代价有点大啊 ， fuck    
 NUM_DDIM_STEPS = 50
 model_key = "runwayml/stable-diffusion-v1-5"
 toy_scheduler = DDIMScheduler.from_pretrained(model_key, subfolder="scheduler")
 toy_scheduler.set_timesteps(NUM_DDIM_STEPS)
-
 timesteps_to_save, num_inference_steps = get_timesteps(toy_scheduler, num_inference_steps=NUM_DDIM_STEPS,
                                                            strength=1.0,
                                                            device=device)
@@ -290,7 +288,6 @@ scheduler = DDIMSchedulerDev(beta_start=0.00085, beta_end=0.012, beta_schedule="
 # 这个我是最愁的一个 ，还不知道能不能跑呢
 ldm_stable = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", scheduler=scheduler).to(
         device)
-
 @torch.no_grad()
 def editing_p2p(
         model,
@@ -342,7 +339,6 @@ def editing_p2p(
     else:
         image = latents
     return image, latent
-
 def get_PNP_input(
         image_path,
         prompt_src,
@@ -372,7 +368,6 @@ def get_PNP_input(
                             uncond_embeddings=uncond_embeddings, x_stars=x_stars, )
         ref_latent = image_enc_latent
         return z_inverted_noise_code, rgb_reconstruction, latent_reconstruction, ref_latent
-
 #NOTE: ddim+pnp 
 def edit_image_ddim_PnP(
     image_path,
@@ -468,7 +463,7 @@ def mask_decode(encoded_mask,image_shape=[512,512]):
 image_save_paths={
     "ddim+pnp":"ddim+pnp",
     "directinversion+pnp":"directinversion+pnp",
-    }
+}
 
 
 if __name__ == "__main__":

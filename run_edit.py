@@ -151,7 +151,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Input your dataset path")
     parser.add_argument('--data_path', type=str, default="ple_images/") # the editing category that needed to run
     parser.add_argument('--edit_category_list', nargs = '+', type=str, default=["0","1","2","3","4","5","6","7","8","9"]) # the editing category that needed to run
-    parser.add_argument( "--edit_methods",  type=str, default="masactrl", help="edit methods that chooses", )
+    parser.add_argument( "--edit_methods",  type=str, default="directinversion+p2p", help="edit methods that chooses", )
     parser.add_argument(
         "--K_round", 
         type=int,
@@ -194,7 +194,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="ddim_masactrl",
+        default="direct+masactrl",
         help="Save editing results",
     )
     args = parser.parse_args()
@@ -246,7 +246,7 @@ if __name__ == "__main__":
                 print(f"editing image [{image_path}] with [p2p]")
                 #setup_seed()
                 torch.cuda.empty_cache() 
-                #NOTE: 如果需要修改 什么具体参数 ， 还需要再edit 中进行修改
+                #NOTE: 如果需要修改 什么具体参数 ， 还需要再edit中进行修改
                 edited_image = editor(edit_method,
                                          image_path=image_path,
                                         prompt_src=original_prompt,
@@ -260,7 +260,7 @@ if __name__ == "__main__":
                                             "words": (blended_word[1], ),
                                             "values": (2, )
                                         } if len(blended_word) else None,
-                                        proximal=None,
+                                        proximal=None, 
                                         # "l0"
                                         quantile=0.75,
                                         use_inversion_guidance=True,
@@ -275,7 +275,7 @@ if __name__ == "__main__":
                 print(f"finish")
                 
     
-    
+    # 显示的是 ：   prompt A  跟 prompt B 的len 不一致，
 
 
 

@@ -101,8 +101,17 @@ def calculate_metric(metrics_calculator,metric, src_image, tgt_image, src_mask, 
 all_tgt_image_folders={
     "1_snp_inversion+p2p" : "snp_k=25/annotation_images",
     "1_prior_inversion+p2p" :"loss_4e-4.5_k=25/annotation_images",
-    "snp+masactrl":"masactrl_k=25/annotation_images"
-    }
+    "snp+masactrl":"masactrl_k=25/annotation_images",
+    "null_text_inversion+p2p":"null_text/annotation_images",
+    "directinversion+masactrl":"direct+masactrl/annotation_images",
+    "direct+p2p":"direct+p2p3/annotation_images",
+    "snp+p2p":"snp+p2p2/annotation_images",
+    "nmg+p2p":"nmg+p2p/annotation_images",
+    "nmg+masactrl":"nmg+masactrl/nmg+masactrl/annotation_images",
+    
+    } 
+
+
 
 
 if __name__=="__main__":
