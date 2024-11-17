@@ -142,7 +142,7 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default="images/gnochi_mirror.jpeg",
+        default="images/000000000001.jpg",
         # /home/user/jin/SPDInv/images/gnochi_mirror.jpeg
         # images/000000000008.jpg
         # required=True,
@@ -151,16 +151,16 @@ def parse_args():
     parser.add_argument(
         "--source",
         type=str,
-        default="A cat sitting next to a mirror",
+        default="a round cake with orange frosting on a wooden plate",
         # required=True,
-        # a round cake with orange frosting on a wooden plate
+        # a round cake with orange frosting on a wooden plate A cat sitting next to a mirror
         # a Golden Retriever standing on the groud
         help="Source prompt",
     )
     parser.add_argument(
         "--target",
         type=str,
-        default= "A silver cat sculpture  sitting next to a mirror",
+        default= "a square cake with orange frosting on a wooden plate",
         #"a Golden Retriever",
         # a silver cat  sculpture standing on the groud
         # required=True,
@@ -170,13 +170,13 @@ def parse_args():
     parser.add_argument(
         "--blended_word",
         type=str,
-        default="cat cat",
+        default="dog cat",
         help="Blended word needed for P2P",
     )
     parser.add_argument(
         "--K_round",
         type=int,
-        default=15,
+        default=25,
         help="Optimization Round",
     )
     parser.add_argument(
@@ -210,7 +210,7 @@ def parse_args():
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=7.5,
+        default=1.0,
     )
     parser.add_argument(
         "--output",

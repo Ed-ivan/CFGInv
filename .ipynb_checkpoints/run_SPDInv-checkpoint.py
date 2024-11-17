@@ -2,11 +2,9 @@
 from typing import Optional, Union, List
 from tqdm import tqdm
 import torch
-import json
 from diffusers import StableDiffusionPipeline
 import numpy as np
 
-from editor import Editor
 from P2P import ptp_utils
 from PIL import Image
 import os
@@ -17,27 +15,10 @@ import torch.nn.functional as F
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 from utils.control_utils import load_512, make_controller
-#from P2P.SPDInv import SourcePromptDisentanglementInversion
-from P2P.CFGInv_withloss import CFGInversion 
-# this file is to run rescontruction results 
+# from P2P.SPDInv import SourcePromptDisentanglementInversion
+from P2P.CFGInv_withloss import CFGInversion
 
-def mask_decode(encoded_mask,image_shape=[512,512]):
-    length=image_shape[0]*image_shape[1]
-    mask_array=np.zeros((length,))
-    
-    for i in range(0,len(encoded_mask),2):
-        splice_len=min(encoded_mask[i+1],length-encoded_mask[i])
-        for j in range(splice_len):
-            mask_array[encoded_mask[i]+j]=1
-            
-    mask_array=mask_array.reshape(image_shape[0], image_shape[1])
-    # to avoid annotation errors in boundary
-    mask_array[0,:]=1
-    mask_array[-1,:]=1
-    mask_array[:,0]=1
-    mask_array[:,-1]=1
-            
-    return mask_array
+# this file is to run rescontruction results 
 
 @torch.no_grad()
 def recontruction(
@@ -86,21 +67,25 @@ def recontruction(
                 context = torch.cat([uncond_embeddings[i].expand(*text_embeddings.shape), text_embeddings])
             else:
                 context = torch.cat([uncond_embeddings_, text_embeddings])
+            # 倒是不如直接 传入一些latents 
             latents = ptp_utils.diffusion_step(model,controller,latents, context, t, guidance_scale,
                                                low_resource=False,
-                                               inference_stage=inference_stage, x_stars=x_stars, i=i, **kwargs)
+                                               inference_stage=inference_stage, x_stars=x_stars,prox=None, i=i, **kwargs)
     if return_type == 'image':
         image = ptp_utils.latent2image(model.vae, latents)
     else:
         image = latents
     return image, latent
+
+
+
 @torch.no_grad()
 def P2P_inversion_and_recontruction(
         image_path,
         prompt_src,
         prompt_tar,
         output_dir='output',
-        guidance_scale=7.5,
+        guidance_scale=5.0,
         npi_interp=0,
         cross_replace_steps=0.8,
         self_replace_steps=0.6,
@@ -131,6 +116,8 @@ def P2P_inversion_and_recontruction(
         image_path, prompt_src, offsets=offsets, npi_interp=npi_interp, verbose=True)
 
     z_inverted_noise_code = x_stars[-1]
+
+    # 如果是修改的话应该从下面入手， 
     
     del SPD_inversion
 
@@ -141,7 +128,7 @@ def P2P_inversion_and_recontruction(
 
     images, _ = recontruction(ldm_stable, prompts,latent=z_inverted_noise_code,
                             num_inference_steps=num_of_ddim_steps,
-                            #TODO: 记得修改一下 
+                            #TODO:记得修改一下 
                             #guidance_scale=1,
                             guidance_scale=guidance_scale,
                             uncond_embeddings=uncond_embeddings,
@@ -151,11 +138,43 @@ def P2P_inversion_and_recontruction(
     Image.fromarray(np.concatenate(images, axis=1)).save(f"{output_dir}/{sample_count}_P2P_{filename}")
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Input your dataset path")
-    parser.add_argument('--data_path', type=str, default="ple_images/") # the editing category that needed to run
-    parser.add_argument('--edit_category_list', nargs = '+', type=str, default=["0","1","2","3","4","5","6","7","8","9"]) # the editing category that needed to run
+    parser = argparse.ArgumentParser(description="Input your image and editing prompt.")
     parser.add_argument(
-        "--K_round", 
+        "--input",
+        type=str,
+        default="images/121000000007.jpg",
+        # /home/user/jin/SPDInv/images/gnochi_mirror.jpeg
+        # images/000000000008.jpg
+        # required=True,
+        help="Image path",
+    )
+    parser.add_argument(
+        "--source",
+        type=str,
+        default="a cat",
+        # required=True,
+        # a round cake with orange frosting on a wooden plate A cat sitting next to a mirror
+        # a Golden Retriever standing on the groud
+        help="Source prompt",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default= " a dog",
+        #"a Golden Retriever",
+        # a silver cat  sculpture standing on the groud
+        # required=True,
+        # a square cake with orange frosting on a wooden plate
+        help="Target prompt",
+    )
+    parser.add_argument(
+        "--blended_word",
+        type=str,
+        default="cat dog",
+        help="Blended word needed for P2P",
+    )
+    parser.add_argument(
+        "--K_round",
         type=int,
         default=25,
         help="Optimization Round",
@@ -191,93 +210,37 @@ def parse_args():
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=7.5,
+        default=1.0,
     )
     parser.add_argument(
         "--output",
         type=str,
-        default="1117_prior_45_4e_guidace_0.1_0.8",
+        default="output_res",
         help="Save editing results",
     )
     args = parser.parse_args()
     return args
 
 # 里面的具体编辑还得看下人家 direactinversion 的  
+
+
 if __name__ == "__main__":
     args = parse_args()
     params = {}
     params['guidance_scale'] = args.guidance_scale
+    params['blend_word'] = (((args.blended_word.split(" ")[0],), (args.blended_word.split(" ")[1],)))
+    params['eq_params'] = {"words": (args.blended_word.split(" ")[1],), "values": (args.eq_params,)}
     params['K_round'] = args.K_round
     params['num_of_ddim_steps'] = args.num_of_ddim_steps
     params['learning_rate'] = args.learning_rate
     params['enable_threshold'] = args.enable_threshold
     params['delta_threshold'] = args.delta_threshold
+
+    params['prompt_src'] = args.source
+    params['prompt_tar'] = args.target
     params['output_dir'] = args.output
-    params['data_path'] = args.data_path
-    data_path=args.data_path
-    output_path=args.output
-    edit_method="masactrl"
-    params['edit_method'] =edit_method
-
-    edit_category_list=args.edit_category_list
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    editor=Editor(edit_method, device,delta_threshold=args.delta_threshold,num_ddim_steps=args.num_of_ddim_steps,
-                  K_round=args.K_round,learning_rate=args.learning_rate)
-    # self, method_list, device,delta_threshold,enable_threshold=True, num_ddim_steps=50,K_round=25,learning_rate=0.001
-    # ple_images/mapping_file_ti2i_benchmark.json 
-    #mapping_file.json
-    with open(f"{data_path}/mapping_file.json", "r") as f:
-        editing_instruction = json.load(f)
-    
-    for key, item in editing_instruction.items():
-        
-        if item["editing_type_id"] not in edit_category_list:
-            continue
-        
-        original_prompt = item["original_prompt"].replace("[", "").replace("]", "")
-        editing_prompt = item["editing_prompt"].replace("[", "").replace("]", "")
-        image_path = os.path.join(f"{data_path}/annotation_images", item["image_path"])
-        editing_instruction = item["editing_instruction"]
-        blended_word = item["blended_word"].split(" ") if item["blended_word"] != "" else []
-        mask = Image.fromarray(np.uint8(mask_decode(item["mask"])[:,:,np.newaxis].repeat(3,2))).convert("L")
-
-        present_image_save_path=image_path.replace(data_path, os.path.join(output_path))
-        if (not os.path.exists(present_image_save_path)):
-                print(f"editing image [{image_path}] with [p2p]")
-                #setup_seed()
-                torch.cuda.empty_cache() 
-                #NOTE: 如果需要修改 什么具体参数 ， 还需要再edit 中进行修改
-                edited_image = editor(edit_method,
-                                         image_path=image_path,
-                                        prompt_src=original_prompt,
-                                        prompt_tar=editing_prompt,
-                                        guidance_scale=7.5,
-                                        cross_replace_steps=0.4,
-                                        self_replace_steps=0.6,
-                                        blend_word=(((blended_word[0], ),
-                                                    (blended_word[1], ))) if len(blended_word) else None,
-                                        eq_params={
-                                            "words": (blended_word[1], ),
-                                            "values": (2, )
-                                        } if len(blended_word) else None,
-                                        proximal=None,
-                                        # "l0"
-                                        quantile=0.75,
-                                        use_inversion_guidance=True,
-                                        recon_lr=1,
-                                        recon_t=400,
-                                        )
-                if not os.path.exists(os.path.dirname(present_image_save_path)):
-                    os.makedirs(os.path.dirname(present_image_save_path))
-                #是不是,要按照它的写法才行啊
-                edited_image.save(present_image_save_path)
-
-                print(f"finish")
-                #HF_ENDPOINT=https://hf-mirror.com python run_edit.pys
-                # chang the  file to 15 
-                
-    
-    
+    params['image_path'] = args.input
+    P2P_inversion_and_recontruction(**params)
 
 
 
