@@ -5,16 +5,13 @@ import torch
 import json
 from diffusers import StableDiffusionPipeline
 import numpy as np
-
 from editor import Editor
 from P2P import ptp_utils
 from PIL import Image
 import os
 from P2P.scheduler_dev import DDIMSchedulerDev
 import argparse
-
 import torch.nn.functional as F
-
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 from utils.control_utils import load_512, make_controller
 #from P2P.SPDInv import SourcePromptDisentanglementInversion
@@ -154,6 +151,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Input your dataset path")
     parser.add_argument('--data_path', type=str, default="ple_images/") # the editing category that needed to run
     parser.add_argument('--edit_category_list', nargs = '+', type=str, default=["0","1","2","3","4","5","6","7","8","9"]) # the editing category that needed to run
+    parser.add_argument( "--edit_methods",  type=str, default="directinversion+p2p", help="edit methods that chooses", )
     parser.add_argument(
         "--K_round", 
         type=int,
@@ -196,7 +194,11 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
+<<<<<<< HEAD
         default="1117_prior_45_4e_guidace_0.1_0.8",
+=======
+        default="direct+masactrl",
+>>>>>>> 98cba60c11dfdf02783bc2c91f130ebd5fb95d74
         help="Save editing results",
     )
     args = parser.parse_args()
@@ -216,7 +218,13 @@ if __name__ == "__main__":
     params['data_path'] = args.data_path
     data_path=args.data_path
     output_path=args.output
+<<<<<<< HEAD
     edit_method="masactrl"
+=======
+    # 改成换成参数的
+    edit_method=args.edit_methods
+    #"p2p"
+>>>>>>> 98cba60c11dfdf02783bc2c91f130ebd5fb95d74
     params['edit_method'] =edit_method
 
     edit_category_list=args.edit_category_list
@@ -246,7 +254,7 @@ if __name__ == "__main__":
                 print(f"editing image [{image_path}] with [p2p]")
                 #setup_seed()
                 torch.cuda.empty_cache() 
-                #NOTE: 如果需要修改 什么具体参数 ， 还需要再edit 中进行修改
+                #NOTE: 如果需要修改 什么具体参数 ， 还需要再edit中进行修改
                 edited_image = editor(edit_method,
                                          image_path=image_path,
                                         prompt_src=original_prompt,
@@ -260,7 +268,7 @@ if __name__ == "__main__":
                                             "words": (blended_word[1], ),
                                             "values": (2, )
                                         } if len(blended_word) else None,
-                                        proximal=None,
+                                        proximal=None, 
                                         # "l0"
                                         quantile=0.75,
                                         use_inversion_guidance=True,
@@ -277,7 +285,7 @@ if __name__ == "__main__":
                 # chang the  file to 15 
                 
     
-    
+    # 显示的是 ：   prompt A  跟 prompt B 的len 不一致，
 
 
 
